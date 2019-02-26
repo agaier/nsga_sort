@@ -2,7 +2,8 @@ import numpy as np
 
 def nsga_sort(objVals, returnFronts=False):
   '''
-  The interesting part about NSGA-II i not the GA but the non-dominated sorting with crowding distance. Which boils down to a ranking of the population. This function returns only this ranking, to be used in NSGA-II or any other multiobjective algorithm.
+  Returns ranking of objective values based on NSGA-II's non-dominated sorting
+  with crowding distance. Optionally returns fronts (useful for visualization).
   
   NOTE: Assumes maximization of objective function
    
