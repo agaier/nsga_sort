@@ -1,0 +1,123 @@
+import numpy as np
+
+def nsga_sort(objVals, returnFronts=False):
+  '''
+  The interesting part about NSGA-II i not the GA but the non-dominated sorting with crowding distance. Which boils down to a ranking of the population. This function returns only this ranking, to be used in NSGA-II or any other multiobjective algorithm.
+  
+  NOTE: Assumes maximization of objective function
+   
+  Input: 
+    objVals - [nIndividuals X nObjectives] - Objective values of each individual
+    
+  Output: 
+    rank    - int([nIndividuals X 1]) - Rank in population of each individual
+    (optional) front   - int([nIndividuals X 1]) - Pareto front of each individual
+  
+  TODO: 
+    * Extend to N objectives
+
+  '''
+  # Sort by dominance into fronts
+  fronts = getFronts(objVals)
+
+  # Rank each front by crowding distance
+  for f in range(len(fronts)):
+    x1 = objVals[fronts[f],0]
+    x2 = objVals[fronts[f],1]    
+    crowdDist = getCrowdingDist(x1) + getCrowdingDist(x2)
+    frontRank = np.argsort(-crowdDist)
+    fronts[f] = [fronts[f][i] for i in frontRank]
+    
+  rank = [ind for front in fronts for ind in front]  
+
+  if returnFronts is True:
+    return rank, fronts
+  else:
+    return rank
+
+def getFronts(objVals):
+  ''' 
+  Fast non-dominated sort, adapted from: https://github.com/haris989/NSGA-II 
+  
+  Input: 
+    objVals - [nIndividuals X nObjectives] - Objective values of individuals
+      
+  Output: 
+    front   - [list of lists] - 1 list for each front: 
+      list of indices of individuals in front
+    
+  TODO: 
+    * Extend to N objectives
+
+  '''
+    
+  values1 = objVals[:,0]
+  values2 = objVals[:,1]
+  
+  S=[[] for i in range(0,len(values1))]
+  front = [[]]
+  n=[0 for i in range(0,len(values1))]
+  rank = [0 for i in range(0, len(values1))]
+  # Get domination relations
+  for p in range(0,len(values1)):
+      S[p]=[]
+      n[p]=0
+      for q in range(0, len(values1)):
+          if (values1[p] > values1[q] and values2[p] > values2[q]) \
+          or (values1[p] >= values1[q] and values2[p] > values2[q]) \
+          or (values1[p] > values1[q] and values2[p] >= values2[q]):
+              if q not in S[p]:
+                  S[p].append(q)
+          elif (values1[q] > values1[p] and values2[q] > values2[p]) \
+          or (values1[q] >= values1[p] and values2[q] > values2[p]) \
+          or (values1[q] > values1[p] and values2[q] >= values2[p]):
+              n[p] = n[p] + 1
+      if n[p]==0:
+          rank[p] = 0
+          if p not in front[0]:
+              front[0].append(p)
+
+  # Assign fronts
+  i = 0
+  while(front[i] != []):
+      Q=[]
+      for p in front[i]:
+          for q in S[p]:
+              n[q] =n[q] - 1
+              if( n[q]==0):
+                  rank[q]=i+1
+                  if q not in Q:
+                      Q.append(q)
+      i = i+1
+      front.append(Q)
+  del front[len(front)-1]
+  return front
+
+def getCrowdingDist(objVector):
+  '''
+  Returns crowding distance of a vector of values, used once on each front
+
+  Input: 
+    objVector - [nIndividuals X nObjectives] - Objective values of individuals
+      
+  Output: 
+    front   - [nIndividuals X 1] - Crowding distance of each individual
+
+  '''
+  # Order by objective value
+  key = np.argsort(objVector)
+  sortedObj = objVector[key]
+    
+  # Distance from values on either side
+  shiftVec = np.r_[np.inf,sortedObj,np.inf] # Edges have infinite distance
+  prevDist = np.abs(sortedObj-shiftVec[:-2])
+  nextDist = np.abs(sortedObj-shiftVec[2:])
+  crowd = prevDist+nextDist
+  if (sortedObj[-1]-sortedObj[0]) > 0:
+    crowd *= (1/sortedObj[-1]-sortedObj[0]) # Normalize by fitness range
+
+  # Restore original order
+  dist = np.empty(len(key))
+  dist[key] = crowd[:]
+
+  return dist
