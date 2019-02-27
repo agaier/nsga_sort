@@ -29,7 +29,10 @@ def nsga_sort(objVals, returnFronts=False):
     frontRank = np.argsort(-crowdDist)
     fronts[f] = [fronts[f][i] for i in frontRank]
     
-  rank = [ind for front in fronts for ind in front]  
+  # Convert to ranking
+  tmp = [ind for front in fronts for ind in front]  
+  rank = np.empty_like(tmp)
+  rank[tmp] = np.arange(len(tmp))
 
   if returnFronts is True:
     return rank, fronts
